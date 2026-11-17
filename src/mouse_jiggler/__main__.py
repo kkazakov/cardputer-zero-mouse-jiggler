@@ -98,7 +98,13 @@ def main(argv: list[str] | None = None) -> int:
         if keypad is not None:
             keypad.close()
         display.close()
-    return status
+        logging.shutdown()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        # Skip interpreter teardown: the GLib/dbus-python threads that served the
+        # pairing agent can fault inside libdbus while Python finalises objects
+        # (observed as SIGSEGV when bluetoothd failed mid-setup).
+        os._exit(status)
 
 
 if __name__ == "__main__":  # pragma: no cover

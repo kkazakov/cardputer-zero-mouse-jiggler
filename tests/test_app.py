@@ -53,6 +53,32 @@ def test_failed_bluetooth_shows_error(tmp_path):
     assert "adapter" in app.error[0]
 
 
+def test_failed_start_keeps_error_page_until_escape(tmp_path):
+    transport = FakeTransport()
+    transport.fail_start = "adapter hci0 is not available"
+    keypad = ScriptedKeypad()
+    clock = FakeClock()
+    app = App(transport, FakeDisplay(), keypad, Config(path=tmp_path / "c.json"), clock=clock)
+    assert app.start() is False
+
+    # run() must stay in the loop rather than return immediately
+    import threading
+
+    thread = threading.Thread(target=app.run, daemon=True)
+    thread.start()
+    for _ in range(20):
+        clock.advance(0.05)
+        if app._dirty is False:
+            break
+        import time as _t
+        _t.sleep(0.01)
+    assert thread.is_alive()
+
+    keypad.queue(KeyEvent(KEY_ESC, True), KeyEvent(KEY_ESC, False))
+    thread.join(timeout=2)
+    assert not thread.is_alive()
+
+
 def test_pair_then_host_connects(env):
     app, transport, _, _, clock, config = env
     press(app, KEY_ENTER)  # activate Pair

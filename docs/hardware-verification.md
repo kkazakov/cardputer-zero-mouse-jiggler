@@ -83,6 +83,20 @@ The editor on the panel (launcher stopped for the capture):
 
 ![Rename editor on the device](device-rename.png)
 
+## 5.2 Launcher icon frame (2026-11-17)
+
+APPLaunch draws a grey rounded frame around every icon. Compositing our icon into
+a real 98 px launcher tile and counting grey pixels along the centre row shows
+the difference:
+
+```text
+launcher tile alone (stock app)   -> grey rings at x 0-3, 96-97
+tile + our borderless icon         -> grey rings at x 0-3, 96-97   (identical)
+tile + old bordered icon           -> grey rings at x 0-3, 8, 89, 96-97  (doubled)
+```
+
+Hence the rule in `ui-spec.md`: never bake a frame into the icon.
+
 ## 6. Findings that changed the implementation
 
 | Finding | Fix |
@@ -94,6 +108,8 @@ The editor on the panel (launcher stopped for the capture):
 | APPLaunch is a **user** service on this image | `install.sh` restarts both the system and `--user` service |
 | The LCD is `panel-mipi-dbid` / `fb0`, not `st7789v` / `fb1` | detection already falls back to `fb0` |
 | A crash during pairing can leave the adapter discoverable | `configure()` now forces `Pairable`/`Discoverable` off at startup |
+| Second instance crashed with SIGSEGV when the HID PSMs were busy | GLib loop stopped on shutdown, `os._exit` after flushing; error page now stays on screen |
+| `setcap` on a copy under `/tmp` silently did nothing (nosuid) | capability launcher installs under `/usr/lib/mouse-jiggler` |
 
 ## 7. Reproduction
 

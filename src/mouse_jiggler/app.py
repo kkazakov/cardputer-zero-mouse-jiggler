@@ -92,7 +92,14 @@ class App:
 
     def run(self) -> None:
         if not self._started and not self.start():
-            self._draw(self.clock())
+            # Keep the error page on screen instead of flashing it: ESC exits,
+            # OK retries the Bluetooth setup.
+            self._dirty = True
+            try:
+                while not self._stop:
+                    self.step()
+            finally:
+                self.shutdown()
             return
         try:
             while not self._stop:

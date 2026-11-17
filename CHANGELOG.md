@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.6 — 2026-11-17
+
+- Fixed a SIGSEGV when the Bluetooth setup failed (e.g. a second instance while
+  the first holds the HID PSMs): the D-Bus/GLib threads were still running while
+  dbus-python finalised its objects. The main loop is now stopped during
+  shutdown and the process exits without interpreter teardown.
+- The error page no longer flashes and disappears: it stays on screen, `OK`
+  retries the Bluetooth setup, `ESC` leaves the app.
+- 81 tests.
+
 ## 0.2.5 — 2026-11-17
 
 - Launcher icon: dropped the baked-in tile border. APPLaunch draws its own grey

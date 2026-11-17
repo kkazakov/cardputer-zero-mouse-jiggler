@@ -98,6 +98,12 @@ class BluetoothTransport:
         if self.profile is not None:
             self.profile.close()
             self.profile = None
+        # Stop the GLib loop last: leaving it running while the interpreter
+        # tears down dbus-python's objects crashes inside libdbus.
+        try:
+            agent_module.stop_mainloop()
+        except Exception as exc:  # pragma: no cover - shutdown path
+            log.debug("could not stop the D-Bus main loop: %s", exc)
 
     # -- runtime -----------------------------------------------------------
     def poll(self, timeout: float = 0.0) -> None:
