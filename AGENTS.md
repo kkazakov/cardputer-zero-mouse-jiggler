@@ -89,9 +89,10 @@ Use `clock.advance(30)` + `app.step()`; never `time.sleep`.
 
 - **BlueZ keeps the HID profile after a crash.** `register_profile()` unregisters
   first on purpose — do not remove that.
-- **L2CAP PSMs 17/19 need root and must be free**: bluetoothd's `input` plugin
-  holds them, so `install.sh bluetooth-fix` (`-P input`) is required. APPLaunch
-  runs apps as the user; the wrapper re-execs through `sudo -n`.
+- **L2CAP PSMs 17/19 need CAP_NET_BIND_SERVICE and must be free**: bluetoothd's
+  `input` plugin holds them (`install.sh bluetooth-fix`, `-P input`). The package
+  ships `packaging/caplaunch.c` so the app runs as the user with that one
+  capability; without it the wrapper falls back to `sudo -n`.
 - **`transport.poll(0.02)` blocks** and needs real sockets. Never use
   `BluetoothTransport` in tests; use `FakeTransport`.
 - **Pairing needs the GLib D-Bus loop** (`python3-gi`); without it the profile

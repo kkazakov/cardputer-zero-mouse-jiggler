@@ -34,6 +34,20 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def has_net_bind_service() -> bool:
+    """True when the process holds CAP_NET_BIND_SERVICE (root or file caps)."""
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        return True
+    try:
+        with open("/proc/self/status", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("CapEff:"):
+                    return bool(int(line.split()[1], 16) & (1 << 10))
+    except OSError:
+        pass
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     logging.basicConfig(
@@ -41,8 +55,11 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
     )
 
-    if hasattr(os, "geteuid") and os.geteuid() != 0:
-        log.warning("not running as root: L2CAP PSMs 0x11/0x13 cannot be bound")
+    if not has_net_bind_service():
+        log.warning(
+            "no CAP_NET_BIND_SERVICE: L2CAP PSMs 0x11/0x13 cannot be bound "
+            "(run as root or through the capability launcher)"
+        )
 
     config = Config.load(args.config)
 

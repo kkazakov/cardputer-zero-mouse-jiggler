@@ -34,7 +34,7 @@ siblings on the same 320×170 panel.
 | --- | --- |
 | Device | M5Stack CardputerZero (C154/C155), Raspberry Pi CM0, 320×170 panel |
 | OS packages | `python3-pil`, `python3-dbus`, `bluez` (`python3-gi` for the pairing agent) |
-| Privileges | root (APPLaunch runs apps as root; L2CAP PSMs 17/19 are privileged) |
+| Privileges | `CAP_NET_BIND_SERVICE` only (the package ships a capability launcher; no root) |
 
 ## Install
 
@@ -106,6 +106,7 @@ More in [docs/usage.md](docs/usage.md).
 | --- | --- |
 | [PLAN.md](PLAN.md) | architecture, transport choice, state machine, milestones, risks |
 | [docs/install.md](docs/install.md) | install, `.deb`, manual run, uninstall |
+| [docs/publish.md](docs/publish.md) | `app-builder.json`, czdev publish, store preflight |
 | [docs/usage.md](docs/usage.md) | pairing, modes, states, battery and screen notes |
 | [docs/development.md](docs/development.md) | dev setup, tests, fakes, adding screens, assets |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | adapter, pairing, framebuffer, permissions |
@@ -139,6 +140,10 @@ fakes in `tests/support.py` — no Bluetooth adapter or framebuffer needed.
   App Store, which rejects root-privileged apps. Sideload only.
 - Use it on machines you own or are authorised to control. It defeats idle
   detection; that can violate a workplace policy.
+- **No root at runtime**: L2CAP PSMs 0x11/0x13 need `CAP_NET_BIND_SERVICE`, so
+  the package installs `/usr/lib/mouse-jiggler/caplaunch` with that one file
+  capability. Without it (plain `install.sh` on a compiler-less system) the
+  wrapper falls back to `sudo -n`.
 
 ## Credits
 

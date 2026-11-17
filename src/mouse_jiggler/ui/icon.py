@@ -1,9 +1,9 @@
 """Launcher icon: pointer, motion trails and a Bluetooth badge on a tile.
 
-The artwork is the app's own: a dark rounded tile with the pointer, two motion
-trails and a Bluetooth badge. Only the tile *border* follows the launcher's
-grey frame colour — APPLaunch draws a grey rounded frame behind every icon, and
-a coloured border made ours stand out from the rest of the home screen.
+The artwork is the app's own: a dark rounded plate with the pointer, two motion
+trails and a Bluetooth badge. The plate has **no border** — APPLaunch already
+draws its own grey rounded frame around every icon, so an outline baked into the
+PNG shows up as a doubled frame.
 """
 
 from __future__ import annotations
@@ -14,17 +14,14 @@ from . import icons, theme
 
 SIZE = 256          # master artwork size; APPLaunch copy is downscaled
 
-#: the launcher's tile frame colour (sampled from its own frame strokes)
-BORDER = (65, 68, 65)
-
 
 def render() -> Image.Image:
     s = SIZE
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    d.rounded_rectangle([4, 4, s - 5, s - 5], 54, fill=theme.BACKGROUND + (255,),
-                        outline=BORDER + (255,), width=6)
+    # No outline: the launcher draws its own frame around the icon.
+    d.rounded_rectangle([4, 4, s - 5, s - 5], 54, fill=theme.BACKGROUND + (255,))
 
     trails = ((92, 40, theme.AMBER), (122, 54, theme.AMBER), (152, 32, theme.BORDER))
     for y, length, color in trails:
@@ -47,4 +44,4 @@ def render_at(size: int) -> Image.Image:
     return render().resize((size, size), Image.LANCZOS)
 
 
-__all__ = ["render", "render_at", "SIZE", "BORDER"]
+__all__ = ["render", "render_at", "SIZE"]

@@ -93,7 +93,10 @@ class HidServer:
                 self._listeners.append(self._listen(adapter_address, psm))
         except PermissionError as exc:
             self.close()
-            raise HidServerError("binding L2CAP PSMs needs root (CAP_NET_BIND_SERVICE)") from exc
+            raise HidServerError(
+                "binding L2CAP PSMs needs CAP_NET_BIND_SERVICE "
+                "(run as root or through the capability launcher)"
+            ) from exc
         except OSError as exc:
             self.close()
             if exc.errno == errno.EADDRINUSE:

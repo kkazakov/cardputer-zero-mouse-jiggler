@@ -177,9 +177,30 @@ or `sudo apt remove mouse-jiggler` for the `.deb`.
 
 ## Runtime permissions
 
-`/usr/share/APPLaunch` apps run as root, which is what binding L2CAP PSMs 0x11
-and 0x13 requires. There is no capability-only mode in this release; running
-manually therefore needs `sudo`.
+Binding L2CAP PSMs 0x11/0x13 (HID control/interrupt) needs
+`CAP_NET_BIND_SERVICE`. The installer prefers a helper that carries exactly
+that capability instead of running the app as root:
+
+| Piece | Purpose |
+| --- | --- |
+| `/usr/lib/mouse-jiggler/caplaunch` | tiny launcher, file capability `cap_net_bind_service=pie`, raises it into the ambient set and execs `python3 -m mouse_jiggler` |
+| `setcap` in `postinst` (deb) / `install.sh` | grants the capability at install time |
+| `/usr/share/APPLaunch/bin/mouse-jiggler` | wrapper: caplaunch → root → `sudo -n`, in that order |
+
+`install.sh` compiles `packaging/caplaunch.c` with whatever compiler is present
+(`gcc`, `cc` or `aarch64-linux-gnu-gcc`) and runs `setcap`, which comes from
+`libcap2-bin`. If either is missing it prints a warning and the wrapper falls
+back to `sudo -n`.
+
+Verify the runtime privilege level:
+
+```bash
+/usr/share/APPLaunch/bin/mouse-jiggler &
+grep -E '^Uid|^CapEff' /proc/$(pgrep -f 'mouse_jiggler$' | head -1)/status
+# Uid: 1000 ...   CapEff: 0000000000000400   (CAP_NET_BIND_SERVICE only)
+```
+
+A manual `sudo python3 -m mouse_jiggler` still works for debugging.
 
 ## Where state lives
 

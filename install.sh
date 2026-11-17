@@ -5,6 +5,7 @@ set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ROOT="${APP_ROOT:-/usr/share/APPLaunch}"
+CAPLAUNCH="${CAPLAUNCH:-/usr/lib/mouse-jiggler/caplaunch}"
 SKIP_RESTART="${SKIP_RESTART:-0}"
 SUDO=""
 if [ "$(id -u)" -ne 0 ] && [ ! -w "$(dirname "$APP_ROOT")" ] && [ ! -w "$APP_ROOT" ]; then
@@ -12,6 +13,35 @@ if [ "$(id -u)" -ne 0 ] && [ ! -w "$(dirname "$APP_ROOT")" ] && [ ! -w "$APP_ROO
 fi
 
 ACTION="${1:-install}"
+
+# Build the capability launcher if a compiler is available. Without it the app
+# still works, but every launch goes through sudo -n (root).
+build_caplaunch() {
+  local compiler=""
+  for candidate in gcc cc aarch64-linux-gnu-gcc; do
+    if command -v "$candidate" >/dev/null 2>&1; then compiler="$candidate"; break; fi
+  done
+  if [ -z "$compiler" ]; then
+    echo "no C compiler found: skipping capability launcher (app will use sudo)"
+    return 0
+  fi
+  local tmp
+  tmp="$(mktemp -d)"
+  if ! "$compiler" -O2 -Wall -o "$tmp/caplaunch" "$SRC/packaging/caplaunch.c"; then
+    echo "warning: could not build caplaunch" >&2
+    rm -rf "$tmp"
+    return 0
+  fi
+  $SUDO install -d "$(dirname "$CAPLAUNCH")"
+  $SUDO install -m 755 "$tmp/caplaunch" "$CAPLAUNCH"
+  rm -rf "$tmp"
+  if command -v setcap >/dev/null 2>&1; then
+    $SUDO setcap cap_net_bind_service=pie "$CAPLAUNCH" \
+      && echo "capability launcher installed (no root at runtime)"
+  else
+    echo "warning: setcap not found (install libcap2-bin); the app will fall back to sudo" >&2
+  fi
+}
 
 check_deps() {
   local missing=""
@@ -41,10 +71,13 @@ case "$ACTION" in
                         "$APP_ROOT/applications/mouse-jiggler.desktop"
     $SUDO install -m 644 "$SRC/applaunch/share/images/mouse-jiggler.png" \
                         "$APP_ROOT/share/images/mouse-jiggler.png"
+    if [ "${SKIP_CAPLAUNCH:-0}" != "1" ]; then
+      build_caplaunch
+    fi
     echo "installed into $APP_ROOT"
     ;;
   uninstall)
-    $SUDO rm -rf "$APP_ROOT/share/mouse-jiggler" \
+    $SUDO rm -rf /usr/lib/mouse-jiggler "$APP_ROOT/share/mouse-jiggler" \
                 "$APP_ROOT/bin/mouse-jiggler" \
                 "$APP_ROOT/applications/mouse-jiggler.desktop" \
                 "$APP_ROOT/share/images/mouse-jiggler.png"

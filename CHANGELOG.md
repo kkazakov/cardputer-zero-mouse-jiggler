@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.5 — 2026-11-17
+
+- Launcher icon: dropped the baked-in tile border. APPLaunch draws its own grey
+  frame around every icon, so the outline appeared as a doubled border.
+  Artwork (plate, pointer, trails, badge) unchanged.
+
+## 0.2.4 — 2026-11-17
+
+- Added `app-builder.json` (czdev / App Store manifest) plus
+  `store/screenshots/` (four 320×170 states) and `docs/publish.md`.
+- **The app no longer needs root.** `packaging/caplaunch.c` is a 3 KB launcher
+  carrying `CAP_NET_BIND_SERVICE`, installed with `setcap` by `install.sh` and by
+  the package `postinst`. Verified on the device: `Uid 1000`,
+  `CapEff 0x400`. The wrapper falls back to `sudo -n` when the launcher is
+  unavailable.
+- `.deb` gains `libcap2-bin` as a dependency and a `postinst`.
+- 80 tests.
+
 ## 0.2.3 — 2026-11-17
 
 - Launcher icon: the tile border is now the launcher's grey `#414441` instead
