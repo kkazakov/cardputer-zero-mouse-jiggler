@@ -11,6 +11,15 @@
  * A file capability only fills the permitted set, and raising it into the
  * ambient set requires it to be inheritable as well — hence the explicit
  * capget/capset round trip before prctl(PR_CAP_AMBIENT_RAISE).
+ *
+ * Exit status:
+ *   0..76, 78..  whatever python3 exits with
+ *   77           CAP_NET_BIND_SERVICE could not be obtained (no file
+ *                capability, nosuid/noexec filesystem, hardened no_new_privs).
+ *                bin/mouse-jiggler matches on this to fall back to sudo -n,
+ *                so the app still works when the capability is unavailable.
+ *
+ * `sudo ./install.sh doctor` checks this whole chain end to end.
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -21,10 +30,27 @@
 #include <sys/syscall.h>
 #include <linux/capability.h>
 
+#define CAP_NET_BIND_SERVICE_BIT 10
+#define EXIT_NO_CAPABILITY 77
+
 #ifndef PR_CAP_AMBIENT
 #define PR_CAP_AMBIENT 47
 #define PR_CAP_AMBIENT_RAISE 2
 #endif
+
+static void explain(void)
+{
+    fputs("mouse-jiggler: cannot raise CAP_NET_BIND_SERVICE into the ambient set,\n"
+          "               so the HID L2CAP PSMs (17/19) cannot be bound.\n"
+          "               The launcher needs a file capability on a filesystem that\n"
+          "               actually carries it:\n"
+          "                 sudo setcap cap_net_bind_service=pie "
+          "/usr/lib/mouse-jiggler/caplaunch\n"
+          "                 getcap /usr/lib/mouse-jiggler/caplaunch\n"
+          "               a nosuid/read-only filesystem silently drops it.\n"
+          "               `sudo ./install.sh doctor` checks this end to end.\n",
+          stderr);
+}
 
 static int make_ambient(int cap)
 {
@@ -37,6 +63,11 @@ static int make_ambient(int cap)
 
     if (syscall(SYS_capget, &hdr, data) != 0) {
         perror("mouse-jiggler: capget");
+        return -1;
+    }
+    if (!(data[0].permitted & (1u << cap))) {
+        fputs("mouse-jiggler: CAP_NET_BIND_SERVICE is not in the permitted set "
+              "(no file capability)\n", stderr);
         return -1;
     }
     data[0].inheritable |= (unsigned int)(1u << cap);
@@ -55,12 +86,16 @@ int main(int argc, char **argv)
 {
     static const char *py = "/usr/bin/python3";
 
-    /* CAP_NET_BIND_SERVICE is bit 10 in the first capability word. */
-    make_ambient(10);
+    if (make_ambient(CAP_NET_BIND_SERVICE_BIT) != 0) {
+        explain();
+        return EXIT_NO_CAPABILITY;
+    }
 
     char **args = calloc((size_t)argc + 3, sizeof(char *));
-    if (!args)
+    if (!args) {
+        perror("mouse-jiggler: calloc");
         return 126;
+    }
 
     args[0] = (char *)py;
     args[1] = "-m";

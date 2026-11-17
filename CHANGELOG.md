@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.2.7 — 2026-11-17
+
+- **The `.deb` shipped without the capability launcher.** `build-deb.sh` only
+  built it when an `aarch64-linux-gnu-gcc` happened to be installed, and still
+  produced a package otherwise: 0.2.6 contains an empty
+  `/usr/lib/mouse-jiggler/`, no `postinst` and therefore no `setcap`, so the
+  wrapper fell back to `sudo -n`, i.e. root. The build now fails without a
+  cross compiler, links the launcher statically, checks that it really is
+  aarch64, and the `postinst` verifies the grant with `getcap`.
+- `caplaunch` no longer continues silently when it cannot raise
+  `CAP_NET_BIND_SERVICE`: it says why on stderr and exits 77, and
+  `bin/mouse-jiggler` treats 77 as "fall back to `sudo -n`" instead of a dead
+  end. `install.sh` verifies `setcap` with `getcap` before believing it, and
+  warns when the filesystem drops file capabilities.
+- New `./install.sh doctor` (`tools/doctor.sh`): proves end to end that the
+  capability reaches Python and that PSM 19 can be bound — without root and
+  without starting the app.
+- The error page hint no longer says "run as root" (the store forbids it), and
+  the stale "the app runs as root" claims are gone from README and `server.py`.
+- `./install.sh doctor` now also reports file capabilities on the interpreter.
+  That was the actual device failure: `/usr/bin/python3.13` carried
+  `cap_net_raw=eip`, and the kernel zeroes the *ambient* set when `execve()`
+  runs a privileged file, so Python received `CAP_NET_RAW` instead of
+  `CAP_NET_BIND_SERVICE` (`CapEff 0x2000`, `CapAmb 0`) and the HID bind was
+  denied. Capability removed; the app runs as uid 1000 with `CapEff 0x400` and
+  binds PSM 0x11/0x13.
+- `install.sh` resolves `setcap`/`getcap` in `/usr/sbin`, so a non-root install
+  on Debian no longer reports "setcap not found" and skips the grant.
+- 83 tests.
+
 ## 0.2.6 — 2026-11-17
 
 - Fixed a SIGSEGV when the Bluetooth setup failed (e.g. a second instance while

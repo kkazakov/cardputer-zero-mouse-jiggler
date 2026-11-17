@@ -89,3 +89,16 @@ def test_busy_hid_channels_point_at_the_installer(monkeypatch):
     monkeypatch.setattr(HidServer, "_listen", busy)
     with pytest.raises(HidServerError, match="bluetooth-fix"):
         HidServer().start("AA:BB:CC:DD:EE:FF")
+
+
+def test_permission_error_names_the_capability_launcher(monkeypatch):
+    import errno
+
+    from mouse_jiggler.bt.server import HidServer, HidServerError
+
+    def denied(_self, _address, _psm):
+        raise PermissionError(errno.EACCES, "Permission denied")
+
+    monkeypatch.setattr(HidServer, "_listen", denied)
+    with pytest.raises(HidServerError, match="CAP_NET_BIND_SERVICE"):
+        HidServer().start("AA:BB:CC:DD:EE:FF")

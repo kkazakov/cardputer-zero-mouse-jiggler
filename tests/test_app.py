@@ -53,6 +53,17 @@ def test_failed_bluetooth_shows_error(tmp_path):
     assert "adapter" in app.error[0]
 
 
+def test_error_hint_does_not_tell_the_user_to_run_as_root(tmp_path):
+    # The store forbids root; the hint must not contradict the launcher.
+    transport = FakeTransport()
+    transport.fail_start = "binding L2CAP PSMs needs CAP_NET_BIND_SERVICE"
+    app = App(transport, FakeDisplay(), ScriptedKeypad(),
+              Config(path=tmp_path / "c.json"), clock=FakeClock())
+    assert app.start() is False
+    assert "root" not in app.error[1].lower()
+    assert "bluetoothd" in app.error[1]
+
+
 def test_failed_start_keeps_error_page_until_escape(tmp_path):
     transport = FakeTransport()
     transport.fail_start = "adapter hci0 is not available"

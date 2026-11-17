@@ -80,7 +80,7 @@ class App:
         except Exception as exc:
             reason = str(exc) or exc.__class__.__name__
             log.error("Bluetooth unavailable: %s", reason)
-            self.error = (reason, "Check bluetoothd and run as root")
+            self.error = (reason, "Check bluetoothd and permissions")
             self.state = State.ERROR
             self._dirty = True
             return False

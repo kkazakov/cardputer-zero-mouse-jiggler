@@ -138,7 +138,9 @@ run it once with `sudo ./install.sh bluetooth-fix`.
 
 ## Running without the launcher
 
-Useful while debugging; the app needs root for the L2CAP PSMs.
+Useful while debugging. `python3 -m mouse_jiggler` alone gets no capability,
+so this needs `sudo`, or the installed wrapper (which goes through the
+capability launcher):
 
 ```bash
 sudo PYTHONPATH=/usr/share/APPLaunch/share/mouse-jiggler \
@@ -189,16 +191,58 @@ that capability instead of running the app as root:
 
 `install.sh` compiles `packaging/caplaunch.c` with whatever compiler is present
 (`gcc`, `cc` or `aarch64-linux-gnu-gcc`) and runs `setcap`, which comes from
-`libcap2-bin`. If either is missing it prints a warning and the wrapper falls
-back to `sudo -n`.
+`libcap2-bin`. A grant is only trusted after `getcap` confirms it stuck: a
+`nosuid` or read-only filesystem silently drops file capabilities, so the
+installer says so instead of claiming success.
 
-Verify the runtime privilege level:
+### Verify it
+
+```bash
+./install.sh doctor
+```
+
+Run it as the app's user (on the stock image `pi`). As root it re-runs itself as
+`$SUDO_USER`, because root holds the capability by definition and would make the
+probe meaningless.
+
+The doctor reports the launch chain step by step and exits non-zero when the
+non-root path is broken. It proves the important part directly: it runs the
+launcher with a `sitecustomize` that prints the capabilities Python received
+and binds PSM 19:
+
+```text
+== probe: what python3 receives through the launcher ==
+  caps    Uid:     1000    1000    1000    1000
+  caps    CapEff:  0000000000000400
+  caps    CapAmb:  0000000000000400
+  ok      bound PSM 19 — the capability reaches python3
+```
+
+The equivalent by hand, against a running app:
 
 ```bash
 /usr/share/APPLaunch/bin/mouse-jiggler &
 grep -E '^Uid|^CapEff' /proc/$(pgrep -f 'mouse_jiggler$' | head -1)/status
 # Uid: 1000 ...   CapEff: 0000000000000400   (CAP_NET_BIND_SERVICE only)
+getcap /usr/lib/mouse-jiggler/caplaunch
+# /usr/lib/mouse-jiggler/caplaunch cap_net_bind_service=eip   (p, i, e as set)
 ```
+
+The doctor also inspects the interpreter: a file capability on
+`/usr/bin/python3` (left over from testing raw sockets, say) defeats the
+handoff — `execve()` zeroes the ambient set for a privileged file, so Python
+gets `CAP_NET_RAW` and not `CAP_NET_BIND_SERVICE`, and the app reports
+`binding L2CAP PSMs needs CAP_NET_BIND_SERVICE`. Remove it with
+`sudo setcap -r /usr/bin/python3.13`.
+
+### When the capability cannot be granted
+
+`caplaunch` exits with status **77** when it cannot raise
+`CAP_NET_BIND_SERVICE` (no file capability, `nosuid` mount, hardened
+`no_new_privs`) and says why on stderr. `bin/mouse-jiggler` matches that status
+and re-execs through `sudo -n`, so the app still starts — as root. The on-screen
+error `binding L2CAP PSMs needs CAP_NET_BIND_SERVICE` means neither path got the
+privilege: run the doctor.
 
 A manual `sudo python3 -m mouse_jiggler` still works for debugging.
 

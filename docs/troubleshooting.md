@@ -54,11 +54,43 @@ it. Verify with:
 systemctl cat bluetooth | grep ExecStart     # should show -P input
 ```
 
-## “binding L2CAP PSMs needs root”
+## “binding L2CAP PSMs needs CAP_NET_BIND_SERVICE”
 
-The app is not running as root. APPLaunch launches apps as root, so this only
-happens with a manual run — use `sudo`. The capability cannot be granted
-per-file to a Python entry point.
+The process holds no `CAP_NET_BIND_SERVICE`, so binding PSMs 17/19 fails with
+`EACCES`. Two things can supply it — root, or the capability launcher — and
+neither did. Start from the doctor on the device:
+
+```bash
+./install.sh doctor      # as the desktop user; as root it re-runs itself
+```
+
+| Doctor says | What to do |
+| --- | --- |
+| `missing: install.sh did not build it` | no C compiler at install time: `sudo apt install gcc` (or install the `.deb`, whose `postinst` sets it up), then `sudo ./install.sh` |
+| `no file capability` | `sudo setcap cap_net_bind_service=pie /usr/lib/mouse-jiggler/caplaunch` |
+| `mounted nosuid` | file capabilities are dropped there; the launcher belongs in `/usr/lib` |
+| `CAP_NET_BIND_SERVICE does not reach python3` | the launcher itself ran without the capability; `bin/mouse-jiggler` then falls back to `sudo -n` |
+| `the interpreter carries file capabilities` | remove them: `sudo setcap -r /usr/bin/python3.13` |
+| `Address already in use` | see the bluetoothd section above |
+
+A file capability on `/usr/bin/python3` is the subtle case: the kernel zeroes
+the ambient set when `execve()` runs a privileged file, so the launcher's
+`CAP_NET_BIND_SERVICE` never arrives and Python inherits the interpreter's
+capability instead (`CapEff 0x2000` = `CAP_NET_RAW`, `CapAmb 0`). It also hands
+that capability to every Python program on the device, so removing it is a
+security fix as well.
+
+Manual runs need the capability too — `python3 -m mouse_jiggler` on its own never
+gets it:
+
+```bash
+sudo /usr/share/APPLaunch/bin/mouse-jiggler --debug
+```
+
+`0.2.6` packages built on a machine without an aarch64 cross compiler shipped an
+empty `/usr/lib/mouse-jiggler/` (no launcher, no `postinst`), so those packages
+always ran as root through `sudo -n`. Rebuild with `gcc-aarch64-linux-gnu`
+installed.
 
 ## The host does not see “CardputerZero Mouse”
 

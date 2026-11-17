@@ -1,6 +1,6 @@
 {
   "package_name": "mouse-jiggler",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "app_name": "Mouse Jiggler",
   "bin_name": "mouse-jiggler",
   "description": "Bluetooth mouse jiggler (Slow / Fast / Jiggle)",

@@ -135,15 +135,16 @@ fakes in `tests/support.py` — no Bluetooth adapter or framebuffer needed.
   received the ±3 px reports as `REL_X` events. Evidence and commands:
   [docs/hardware-verification.md](docs/hardware-verification.md).
 - The UI, state machine, report encoding, HIDP framing and packaging are
-  implemented and covered by 80 tests.
-- The app runs as root (PSM binding), so it is not eligible for the official
-  App Store, which rejects root-privileged apps. Sideload only.
+  implemented and covered by 83 tests.
+- **No root at runtime** on the normal path: L2CAP PSMs 0x11/0x13 need
+  `CAP_NET_BIND_SERVICE`, so the package installs
+  `/usr/lib/mouse-jiggler/caplaunch` with that one file capability.
+  `./install.sh doctor` proves it end to end; if the launcher cannot get
+  the capability the wrapper falls back to `sudo -n` (root) rather than failing.
 - Use it on machines you own or are authorised to control. It defeats idle
   detection; that can violate a workplace policy.
-- **No root at runtime**: L2CAP PSMs 0x11/0x13 need `CAP_NET_BIND_SERVICE`, so
-  the package installs `/usr/lib/mouse-jiggler/caplaunch` with that one file
-  capability. Without it (plain `install.sh` on a compiler-less system) the
-  wrapper falls back to `sudo -n`.
+- `install.sh` needs a C compiler on the device to build the launcher; a
+  compiler-less install still works, but every launch goes through `sudo -n`.
 
 ## Credits
 

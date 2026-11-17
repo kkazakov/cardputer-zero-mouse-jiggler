@@ -97,6 +97,30 @@ tile + old bordered icon           -> grey rings at x 0-3, 8, 89, 96-97  (double
 
 Hence the rule in `ui-spec.md`: never bake a frame into the icon.
 
+## 5.3 Non-root launch (2026-11-17)
+
+`./install.sh doctor` on the device (`krasi`, Debian 13, kernel 6.18.39+rpt-rpi-v8):
+
+```text
+== probe: what python3 receives through the launcher ==
+  caps    Uid:     1000    1000    1000    1000
+  caps    CapEff:  0000000000000400
+  caps    CapAmb:  0000000000000400
+  ok      bound PSM 19 — the capability reaches python3
+
+== verdict ==
+  PASS  non-root launch can bind the HID PSMs
+```
+
+The app through the installed wrapper, as user `wasp` (no root, no sudo):
+
+```text
+INFO mouse_jiggler.bt.server: listening for HID hosts on F0:40:AF:90:55:E7 (PSM 0x11/0x13)
+INFO mouse_jiggler.bt.profile: HID profile registered at /org/bluez/mousejiggler
+INFO mouse_jiggler.bt.agent: pairing agent registered (NoInputNoOutput)
+INFO mouse_jiggler.app: Bluetooth ready
+```
+
 ## 6. Findings that changed the implementation
 
 | Finding | Fix |
@@ -110,6 +134,9 @@ Hence the rule in `ui-spec.md`: never bake a frame into the icon.
 | A crash during pairing can leave the adapter discoverable | `configure()` now forces `Pairable`/`Discoverable` off at startup |
 | Second instance crashed with SIGSEGV when the HID PSMs were busy | GLib loop stopped on shutdown, `os._exit` after flushing; error page now stays on screen |
 | `setcap` on a copy under `/tmp` silently did nothing (nosuid) | capability launcher installs under `/usr/lib/mouse-jiggler` |
+| The 0.2.6 `.deb` contained an empty `/usr/lib/mouse-jiggler/`: it was built on a host without an aarch64 compiler, so there was no launcher and no `postinst`, and the wrapper silently fell back to `sudo -n` (root) | `build-deb.sh` refuses to build without a cross compiler and the `postinst` verifies `setcap` with `getcap` |
+| Nothing proved that the capability actually reached Python, so a broken grant looked like a broken app | `./install.sh doctor` runs the launcher and binds PSM 19 from inside the interpreter |
+| `/usr/bin/python3.13` carried `cap_net_raw=eip` from an earlier experiment, so `execve()` zeroed the ambient set and Python got `CAP_NET_RAW` instead of `CAP_NET_BIND_SERVICE` | capability removed with `setcap -r`; the doctor now flags any file capability on the interpreter |
 
 ## 7. Reproduction
 

@@ -1,6 +1,6 @@
 [project]
 name = "mouse-jiggler"
-version = "0.2.6"
+version = "0.2.7"
 description = "Bluetooth mouse jiggler for the M5Stack CardputerZero"
 requires-python = ">=3.10"
 dependencies = ["Pillow>=9.0"]

@@ -20,8 +20,9 @@ ruff check src tests tools                                  # lint (config: pypr
 
 python3 tools/render_assets.py                              # regenerate docs/ui-*.png + icon
 PYTHONPATH=src python3 -m mouse_jiggler --help              # CLI smoke test
-APP_ROOT=/tmp/czroot SKIP_RESTART=1 ./install.sh install    # stage the launcher layout
-./packaging/build-deb.sh                                    # dist/*.deb (needs dpkg-deb)
+APP_ROOT=/tmp/czroot SKIP_RESTART=1 SKIP_CAPLAUNCH=1 ./install.sh install  # stage the launcher layout
+./install.sh doctor                                         # prove CAP_NET_BIND_SERVICE reaches Python
+./packaging/build-deb.sh                                    # dist/*.deb (needs dpkg-deb + aarch64 gcc)
 ```
 
 ## 3. Architecture
@@ -93,6 +94,12 @@ Use `clock.advance(30)` + `app.step()`; never `time.sleep`.
   `input` plugin holds them (`install.sh bluetooth-fix`, `-P input`). The package
   ships `packaging/caplaunch.c` so the app runs as the user with that one
   capability; without it the wrapper falls back to `sudo -n`.
+- **Never leave a file capability on the interpreter.** `setcap` on
+  `/usr/bin/python3` silently defeats the launcher: `execve()` zeroes the
+  *ambient* set when it runs a privileged file (one with file caps), so Python
+  inherits the interpreter's capability instead of `CAP_NET_BIND_SERVICE` —
+  `CapEff: 0x2000`, `CapAmb: 0`, bind denied. `./install.sh doctor` reports it;
+  undo with `sudo setcap -r /usr/bin/python3.13`.
 - **`transport.poll(0.02)` blocks** and needs real sockets. Never use
   `BluetoothTransport` in tests; use `FakeTransport`.
 - **Pairing needs the GLib D-Bus loop** (`python3-gi`); without it the profile

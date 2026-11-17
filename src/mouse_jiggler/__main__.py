@@ -57,8 +57,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if not has_net_bind_service():
         log.warning(
-            "no CAP_NET_BIND_SERVICE: L2CAP PSMs 0x11/0x13 cannot be bound "
-            "(run as root or through the capability launcher)"
+            "no CAP_NET_BIND_SERVICE: L2CAP PSMs 0x11/0x13 cannot be bound. "
+            "Start the app through /usr/share/APPLaunch/bin/mouse-jiggler "
+            "(capability launcher) or check 'sudo ./install.sh doctor'."
         )
 
     config = Config.load(args.config)

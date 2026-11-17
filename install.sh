@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Install (or remove) Mouse Jiggler in APPLaunch.
-# Run on the CardputerZero; needs root for /usr/share and L2CAP at runtime.
+# Run on the CardputerZero. Root is needed to write /usr/share and /usr/lib;
+# the installed app then runs as the desktop user (capability launcher) or,
+# as a fallback, through sudo -n.
 set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,6 +16,41 @@ fi
 
 ACTION="${1:-install}"
 
+# Debian keeps setcap/getcap in /usr/sbin, which is not on a desktop user's
+# PATH — that is how a normal `./install.sh` used to skip setcap and leave the
+# launcher without its capability.
+find_tool() {
+  local tool="$1" dir
+  if command -v "$tool" >/dev/null 2>&1; then command -v "$tool"; return 0; fi
+  for dir in /usr/sbin /sbin /usr/bin /bin; do
+    if [ -x "$dir/$tool" ]; then echo "$dir/$tool"; return 0; fi
+  done
+  return 1
+}
+
+# True when the file carries CAP_NET_BIND_SERVICE as a file capability.
+# `setcap` can succeed without it sticking (nosuid/read-only filesystem, no
+# xattr support), so every grant is verified instead of trusted.
+has_file_cap() {
+  local file="$1"
+  if command -v getcap >/dev/null 2>&1 \
+     && getcap "$file" 2>/dev/null | grep -q cap_net_bind_service; then
+    return 0
+  fi
+  python3 - "$file" <<'PY' 2>/dev/null
+import os
+import struct
+import sys
+
+try:
+    raw = os.getxattr(sys.argv[1], "security.capability")
+except OSError:
+    raise SystemExit(1)
+perm, inh = struct.unpack_from("<II", raw, 4)
+raise SystemExit(0 if (perm | inh) & (1 << 10) else 1)  # CAP_NET_BIND_SERVICE
+PY
+}
+
 # Build the capability launcher if a compiler is available. Without it the app
 # still works, but every launch goes through sudo -n (root).
 build_caplaunch() {
@@ -22,7 +59,9 @@ build_caplaunch() {
     if command -v "$candidate" >/dev/null 2>&1; then compiler="$candidate"; break; fi
   done
   if [ -z "$compiler" ]; then
-    echo "no C compiler found: skipping capability launcher (app will use sudo)"
+    echo "no C compiler found: cannot build the capability launcher" >&2
+    echo "  -> the app will run as ROOT through sudo -n instead of as your user" >&2
+    echo "  -> for the non-root path: sudo apt install gcc && sudo $0 install" >&2
     return 0
   fi
   local tmp
@@ -35,12 +74,18 @@ build_caplaunch() {
   $SUDO install -d "$(dirname "$CAPLAUNCH")"
   $SUDO install -m 755 "$tmp/caplaunch" "$CAPLAUNCH"
   rm -rf "$tmp"
-  if command -v setcap >/dev/null 2>&1; then
-    $SUDO setcap cap_net_bind_service=pie "$CAPLAUNCH" \
-      && echo "capability launcher installed (no root at runtime)"
-  else
+  local setcap_bin=""
+  if ! setcap_bin=$(find_tool setcap); then
     echo "warning: setcap not found (install libcap2-bin); the app will fall back to sudo" >&2
+    return 0
   fi
+  if $SUDO "$setcap_bin" cap_net_bind_service=pie "$CAPLAUNCH" && has_file_cap "$CAPLAUNCH"; then
+    echo "capability launcher installed (runs as the desktop user, no root)"
+    return 0
+  fi
+  echo "warning: CAP_NET_BIND_SERVICE did not stick on $CAPLAUNCH" >&2
+  echo "         (the filesystem must support security xattrs and not be nosuid)" >&2
+  echo "         the app will fall back to sudo -n (root)" >&2
 }
 
 check_deps() {
@@ -51,6 +96,9 @@ PY
   if [ -n "$missing" ]; then
     echo "missing dependencies: install python3-pil python3-dbus" >&2
     exit 1
+  fi
+  if ! find_tool setcap >/dev/null 2>&1; then
+    echo "missing dependencies: install libcap2-bin (no non-root launch without it)" >&2
   fi
 }
 
@@ -75,6 +123,9 @@ case "$ACTION" in
       build_caplaunch
     fi
     echo "installed into $APP_ROOT"
+    if [ "${SKIP_CAPLAUNCH:-0}" != "1" ]; then
+      echo "check the non-root path with: $0 doctor"
+    fi
     ;;
   uninstall)
     $SUDO rm -rf /usr/lib/mouse-jiggler "$APP_ROOT/share/mouse-jiggler" \
@@ -99,8 +150,11 @@ case "$ACTION" in
     echo "bluetoothd restored to its default plugin set"
     exit 0
     ;;
+  doctor)
+    WRAPPER="$APP_ROOT/bin/mouse-jiggler" exec sh "$SRC/tools/doctor.sh"
+    ;;
   *)
-    echo "usage: $0 [install|uninstall|bluetooth-fix|bluetooth-restore]" >&2
+    echo "usage: $0 [install|uninstall|bluetooth-fix|bluetooth-restore|doctor]" >&2
     exit 2
     ;;
 esac

@@ -1,8 +1,9 @@
 """L2CAP HIDP server: two listening channels plus per-host sessions.
 
 PSM 0x11 carries interrupt reports (device -> host), PSM 0x13 carries control
-transactions. Binding PSMs below 4096 needs root or CAP_NET_BIND_SERVICE; under
-APPLaunch the app already runs as root.
+transactions. Binding PSMs below 4096 needs root or CAP_NET_BIND_SERVICE. Under
+APPLaunch the app runs as the desktop user holding only that one capability
+(packaging/caplaunch.c), with ``sudo -n`` as the fallback.
 
 The socket creation is isolated in :meth:`HidServer._listen` so tests can drive
 :class:`HidClient` over AF_UNIX socketpairs without a Bluetooth adapter.
