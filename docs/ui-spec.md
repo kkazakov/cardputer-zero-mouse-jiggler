@@ -190,15 +190,21 @@ confirming unpairs and starts a fresh 180 s pairing window.
 
 ## 7. Icon
 
-`assets/icon-256.png` — 256 × 256, transparent corners, 4 px outer margin:
+`applaunch/share/images/mouse-jiggler.png` — 256 × 256 RGBA, rendered by
+`src/mouse_jiggler/ui/icon.py` (also written to `assets/icon-256.png`).
 
-- rounded tile, 54 px radius, `Background` fill, 6 px `Primary` border
-- pointer arrow, `Primary`, with a 7 px `Background` separation stroke
-- three motion ticks (40/54/32 px) in `Amber`/`Amber`/`Border`
-- solid 54 px `Amber` disc at (206,56) with the Bluetooth rune knocked out in
-  `Background`
+| Element | Spec |
+| --- | --- |
+| tile | rounded rect, 54 px radius, inset 4 px, fill `#0b111a`, 6 px border |
+| tile border | **`#414441` (65,68,65)** — the launcher's own tile-frame grey |
+| pointer | mint `#88f0b3`, 7 px dark separation stroke, 88–185 × 40–205 |
+| motion trails | 40/54/32 px bars at y 92/122/152, amber `#ffd18b`, amber, `#27374a` |
+| badge | 54 px amber disc at (206,56) with the Bluetooth rune knocked out |
 
-It is legible at 48 px (launcher size) and uses only the app palette.
+**Keep the border grey.** APPLaunch draws a grey rounded frame (`#414441` stroke
+on a `#202020` tile) behind every icon; a coloured border made this icon stand
+out from the rest of the home screen, and removing the tile entirely made it
+look unlike the other apps. The artwork itself stays as designed.
 
 ## 8. A note on colours
 

@@ -26,7 +26,7 @@ siblings on the same 320×170 panel.
 - **Re-pair and forget** — re-pair confirmation page unlinks the old host first.
 - **Rename** — type a new Bluetooth name on the device keyboard; it updates the
   adapter alias and the SDP record immediately and is saved for next boot.
-- **Launcher integration** — APPLaunch icon, clean exit back to HOME.
+- **Launcher integration** — APPLaunch icon with the launcher's grey tile border, clean exit back to HOME.
 
 ## Requirements
 

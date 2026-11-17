@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3 — 2026-11-17
+
+- Launcher icon: the tile border is now the launcher's grey `#414441` instead
+  of mint, so the icon sits in the home screen's grey frame like every other
+  app. Artwork unchanged.
+
 ## 0.2.2 — 2026-11-17
 
 - Removed the "hold ESC" popup entirely; `ESC` is a single press everywhere.

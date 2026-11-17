@@ -10,7 +10,8 @@ Writes:
     docs/ui-rename-card.png  carousel centred on Rename
     docs/ui-rename.png     name editor
     docs/ui-pairing.png    pairing status page
-    assets/icon-256.png    256x256 launcher icon
+    assets/icon-256.png    256x256 icon, transparent glyph (docs/store)
+    applaunch/share/images/mouse-jiggler.png  100x100 icon used by APPLaunch
 
 The screens come from the real UI module (src/mouse_jiggler/ui), so these files
 double as visual regression fixtures.
@@ -44,7 +45,8 @@ def main() -> None:
         ),
         "docs/ui-rename.png": screens.render_rename("Desk Mouse"),
         "docs/ui-pairing.png": screens.render_pairing(161),
-        "assets/icon-256.png": icon.render(),
+        "assets/icon-256.png": icon.render_at(256),
+        "applaunch/share/images/mouse-jiggler.png": icon.render(),
     }
     for rel, image in outputs.items():
         path = os.path.join(ROOT, rel)
