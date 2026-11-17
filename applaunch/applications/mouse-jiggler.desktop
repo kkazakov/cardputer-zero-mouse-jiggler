@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Mouse Jiggler
+Comment=Bluetooth mouse jiggler (Slow / Fast / Jiggle)
+Exec=bin/mouse-jiggler
+Terminal=false
+Icon=share/images/mouse-jiggler.png
+Type=Application
+Categories=Utility;

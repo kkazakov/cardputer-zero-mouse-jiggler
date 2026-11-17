@@ -1,0 +1,88 @@
+"""Command line entry point: ``python3 -m mouse_jiggler``."""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import os
+import signal
+import sys
+
+from . import __version__
+from .app import App
+from .bt.transport import BluetoothTransport
+from .config import Config
+from .input.keypad import Keypad, KeypadError
+from .platform.fb import Framebuffer, FramebufferError
+
+log = logging.getLogger("mouse_jiggler")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="mouse-jiggler",
+        description="Bluetooth mouse jiggler for the M5Stack CardputerZero",
+    )
+    parser.add_argument("--fb", metavar="PATH", help="framebuffer device (default: auto)")
+    parser.add_argument("--keys", metavar="PATH", help="input event device (default: auto)")
+    parser.add_argument("--adapter", default="hci0", help="Bluetooth adapter (default: hci0)")
+    parser.add_argument("--config", metavar="PATH", help="config file path")
+    parser.add_argument("--pairing-seconds", type=float, default=180.0,
+                        help="pairing window length (default: 180)")
+    parser.add_argument("--debug", action="store_true", help="verbose logging")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
+    )
+
+    if hasattr(os, "geteuid") and os.geteuid() != 0:
+        log.warning("not running as root: L2CAP PSMs 0x11/0x13 cannot be bound")
+
+    config = Config.load(args.config)
+
+    try:
+        display = Framebuffer(args.fb).open()
+    except FramebufferError as exc:
+        log.error("%s", exc)
+        return 1
+
+    keypad = None
+    try:
+        keypad = Keypad.open(args.keys)
+    except KeypadError as exc:
+        log.warning("%s", exc)
+
+    transport = BluetoothTransport(args.adapter, device_name=config.device_name)
+    app = App(
+        transport,
+        display,
+        keypad,
+        config,
+        pairing_seconds=args.pairing_seconds,
+    )
+
+    def _stop(_signum, _frame):
+        log.info("signal received, exiting")
+        app.stop()
+
+    signal.signal(signal.SIGINT, _stop)
+    signal.signal(signal.SIGTERM, _stop)
+
+    status = 0
+    try:
+        app.run()
+    finally:
+        if keypad is not None:
+            keypad.close()
+        display.close()
+    return status
+
+
+if __name__ == "__main__":  # pragma: no cover
+    sys.exit(main())
