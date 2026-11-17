@@ -4,6 +4,8 @@
 
 - Removed the "hold ESC" popup entirely; `ESC` is a single press everywhere.
   There is no hold timer and no exit overlay any more.
+- `packaging/build-deb.sh` now builds cleanly in a container (`SKIP_DEPS=1`)
+  and normalises file modes to 644/755 inside the package.
 
 ## 0.2.1 — 2026-11-17
 

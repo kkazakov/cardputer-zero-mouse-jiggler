@@ -13,7 +13,7 @@ PKG="mouse-jiggler"
 rm -rf "$STAGE"
 mkdir -p "$STAGE/DEBIAN" "$STAGE/usr/share/APPLaunch"
 
-APP_ROOT="$STAGE/usr/share/APPLaunch" SKIP_RESTART=1 "$SRC/install.sh" install
+APP_ROOT="$STAGE/usr/share/APPLaunch" SKIP_RESTART=1 SKIP_DEPS=1 "$SRC/install.sh" install
 
 cat > "$STAGE/DEBIAN/control" <<EOF
 Package: $PKG

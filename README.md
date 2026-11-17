@@ -62,9 +62,12 @@ undoes it.
 Building a `.deb` instead:
 
 ```bash
-./packaging/build-deb.sh          # dist/mouse-jiggler_0.1.0_arm64.deb
-sudo apt install ./dist/mouse-jiggler_0.1.0_arm64.deb
+./packaging/build-deb.sh          # dist/mouse-jiggler_0.2.2_arm64.deb
+sudo apt install ./dist/mouse-jiggler_0.2.2_arm64.deb
 ```
+
+The builder also runs in a container, so any machine with Docker can produce
+the package (see [docs/install.md](docs/install.md#debian-package)).
 
 See [docs/install.md](docs/install.md) for details, manual runs and uninstall.
 

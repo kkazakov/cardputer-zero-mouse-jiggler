@@ -82,14 +82,59 @@ Relative `Exec` and `Icon` paths resolve under `/usr/share/APPLaunch`.
 
 ## Debian package
 
+`packaging/build-deb.sh` stages the same four paths as `install.sh` and wraps
+them in a `.deb`.
+
+### Build on the device (or any Debian/Ubuntu host with `dpkg-deb`)
+
 ```bash
-./packaging/build-deb.sh                 # -> dist/mouse-jiggler_0.1.0_arm64.deb
-sudo apt install ./dist/mouse-jiggler_0.1.0_arm64.deb
-sudo systemctl restart APPLaunch.service
+cd ~/cardputer-zero-mouse-emu
+./packaging/build-deb.sh
+# -> dist/mouse-jiggler_0.2.2_arm64.deb
 ```
 
-The package is `Architecture: arm64` (matching platform conventions) even though
-the code is pure Python. It depends on `python3-pil`, `python3-dbus`, `python3-gi` and `bluez`.
+### Build anywhere with Docker
+
+No Python or `dpkg-deb` needed on the host:
+
+```bash
+cd cardputer-zero-mouse-emu
+rm -rf build dist
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/src" -w /src \
+  ubuntu:24.04 ./packaging/build-deb.sh
+```
+
+### Install
+
+```bash
+sudo apt install ./dist/mouse-jiggler_0.2.2_arm64.deb
+# APPLaunch only rescans applications when it starts:
+#   system service:  sudo systemctl restart APPLaunch.service
+#   user service:    systemctl --user restart APPLaunch.service
+# or just reboot.
+```
+
+Inspect before installing:
+
+```bash
+dpkg-deb -I dist/mouse-jiggler_0.2.2_arm64.deb     # metadata, depends
+dpkg-deb -c dist/mouse-jiggler_0.2.2_arm64.deb     # file list
+```
+
+The package is `Architecture: arm64` (matching platform conventions) even
+though the code is pure Python. Depends: `python3`, `python3-pil`,
+`python3-dbus`, `python3-gi`, `bluez`. It installs:
+
+```
+/usr/share/APPLaunch/applications/mouse-jiggler.desktop
+/usr/share/APPLaunch/bin/mouse-jiggler
+/usr/share/APPLaunch/share/images/mouse-jiggler.png
+/usr/share/APPLaunch/share/mouse-jiggler/mouse_jiggler/...
+```
+
+Remove with `sudo apt remove mouse-jiggler`. The Bluetooth drop-in from
+`bluetooth-fix` is *not* part of the package (it changes system services);
+run it once with `sudo ./install.sh bluetooth-fix`.
 
 ## Running without the launcher
 

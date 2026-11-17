@@ -141,8 +141,15 @@ interrupt channel. If pairing behaviour needs to change, it is in
 
 ```bash
 APP_ROOT=/tmp/czroot SKIP_RESTART=1 ./install.sh install   # stage layout
-./packaging/build-deb.sh 0.1.0                            # dist/*.deb
+./packaging/build-deb.sh 0.2.2                            # dist/*.deb
+
+# same thing without a Debian host: build inside a container
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/src" -w /src \
+  ubuntu:24.04 ./packaging/build-deb.sh
 ```
+
+`build-deb.sh` calls `install.sh` with `SKIP_DEPS=1` (staging does not need
+Pillow/dbus) and `SKIP_RESTART=1` (never touch services during a build).
 
 `install.sh` skips `sudo` when the target tree is writable, which is what makes
 staging and CI possible. `build-deb.sh` reuses the same script with

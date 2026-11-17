@@ -26,12 +26,16 @@ PY
 
 case "$ACTION" in
   install)
-    check_deps
+    if [ "${SKIP_DEPS:-0}" != "1" ]; then
+      check_deps
+    fi
     $SUDO install -d "$APP_ROOT/bin" "$APP_ROOT/applications" \
                        "$APP_ROOT/share/images" "$APP_ROOT/share/mouse-jiggler"
     $SUDO rm -rf "$APP_ROOT/share/mouse-jiggler/mouse_jiggler"
     $SUDO cp -a "$SRC/src/mouse_jiggler" "$APP_ROOT/share/mouse-jiggler/"
-$SUDO find "$APP_ROOT/share/mouse-jiggler" -name '__pycache__' -type d -prune -exec rm -rf {} +
+    $SUDO find "$APP_ROOT/share/mouse-jiggler" -name '__pycache__' -type d -prune -exec rm -rf {} +
+    $SUDO find "$APP_ROOT/share/mouse-jiggler" -type d -exec chmod 755 {} +
+    $SUDO find "$APP_ROOT/share/mouse-jiggler" -type f -exec chmod 644 {} +
     $SUDO install -m 755 "$SRC/packaging/mouse-jiggler.sh" "$APP_ROOT/bin/mouse-jiggler"
     $SUDO install -m 644 "$SRC/applaunch/applications/mouse-jiggler.desktop" \
                         "$APP_ROOT/applications/mouse-jiggler.desktop"
@@ -96,7 +100,8 @@ if [ "$SKIP_RESTART" != "1" ]; then
   restart_launcher
 fi
 
-if ! grep -Rqs -E -- "(-P[[:space:]]+input|--noplugin=input)" \
+if [ "${SKIP_RESTART:-0}" != "1" ] \
+   && ! grep -Rqs -E -- "(-P[[:space:]]+input|--noplugin=input)" \
         /etc/systemd/system/bluetooth.service.d 2>/dev/null; then
   echo
   echo "NOTE: bluetoothd currently owns L2CAP PSMs 0x11/0x13 (HID device role)."
